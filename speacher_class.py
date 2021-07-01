@@ -16,6 +16,7 @@ class ChomeSpeacher():
     def __init__(self, appName, listenWord):
         self.appName = appName
         self.listenWord = listenWord
+        self.askType = "listen"
 
     def say(self, output):
         print(output)
@@ -40,10 +41,16 @@ class ChomeSpeacher():
 
         self.commandHandler(newCommand)
 
+    def commandAsk(self):
+        if self.askType == "write":
+            self.commandInput()
+        elif self.askType == "listen":
+            self.commandListener()
+
     def commandInput(self):
         newCommand = input()
         self.runCommand(newCommand)
-        self.commandInput()
+        self.commandAsk()
 
     def commandListener(self):
         answer = ""
@@ -59,19 +66,33 @@ class ChomeSpeacher():
         print(answer)
         self.runCommand(answer)
         answer = None
-        self.commandListener()
+        self.commandAsk()
 
     def commandHandler(self, command):
-        if (command["paramCount"] == 1):
-            if (command["command"] == "exit"):
+        if command["paramCount"] == 1:
+            if command["command"] == "exit":
                 sys.exit(1)
+            elif command["command"] == "help":
+                self.output("writing help")
+                return print(f'\nYou can start commands in this app with saying \"{self.listenWord}\" at beginning and say the command after that.\
+                    \nIf you want to write something because you want to enter a link exactly, you can say: \"{self.listenWord} type enter\".\
+                    \nIf you then want to be able to speak again, you say: \"{self.listenWord} type listen\".\
+                    \nRead the introduction for more informations.\n\
+                ')
 
-        elif (command["paramCount"] >= 2):
+        if command["paramCount"] >= 2:
+            if command["command"] == "type":
+                if command["value"] == "listen":
+                    self.askType = "listen"
+                    return self.output("changing to listen mode")
+                elif command["value"] == "enter":
+                    self.askType = "write"
+                    return self.output("changing to write mode")
 
-            if (command["command"] == "open"):
+            if command["command"] == "open":
                 currentCommand = "start %s" % command["value"]
 
-                if (os.system(currentCommand) == 0):
+                if os.system(currentCommand) == 0:
                     return self.output(f"starting {command['valueList'][0]}")
                 else:
                     return self.output(f"Can\'t open \"%s\"." % (command["value"]))
