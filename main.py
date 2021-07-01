@@ -12,13 +12,13 @@ from speacher_class import ChomeSpeacher
 # engine.say('Hello World!!')
 
 appName = "CHOME SPEACHER"
-listenWord = "chome"
+listenWord = "alexa"
 
 speacher = ChomeSpeacher(appName, listenWord)
 def startSpeacher():
-    # commandListener()
     os.system("cls")
     speacher.say("Welcome to %s!\n" % appName)
-    speacher.commandInput()
+    # speacher.commandInput()
+    speacher.commandListener()
 
 startSpeacher()

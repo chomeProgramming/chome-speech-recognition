@@ -29,7 +29,7 @@ class ChomeSpeacher():
         if (newCommand[0].lower() != self.listenWord):
             return print("Wrong listener word.")
         if (len(newCommand) < 2):
-            return self.output("Parameters are written wrong.")
+            return self.output("Parameters are wrong.")
 
         newCommand = {
             "paramCount": len(newCommand) - 1,
@@ -49,12 +49,13 @@ class ChomeSpeacher():
         answer = ""
         with speech_recognition.Microphone() as source:
             audio = recognizer.listen(source)
-        try:
-            answer = recognizer.recognize_google(
-                audio, key=None, language="en-US", show_all=False
-            )
-        except speech_recognition.UnknownValueError:
-            print("UnknownValueError")
+            try:
+                # audio = recognizer.listen(speech_recognition.Microphone())
+                answer = recognizer.recognize_google(
+                    audio, key=None, language="en-US", show_all=False
+                )
+            except speech_recognition.UnknownValueError:
+                print("UnknownValueError")
         print(answer)
         self.runCommand(answer)
         answer = None
