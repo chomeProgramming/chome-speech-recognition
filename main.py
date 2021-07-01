@@ -18,7 +18,11 @@ speacher = ChomeSpeacher(appName, listenWord)
 def startSpeacher():
     os.system("cls")
     speacher.say("Welcome to %s!\n" % appName)
+    # speacher.askType = "write"
     # speacher.commandInput()
     speacher.commandListener()
 
 startSpeacher()
+
+# vosk speech_recognition:
+# https://www.youtube.com/watch?v=Itic1lFc4Gg

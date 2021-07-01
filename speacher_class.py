@@ -16,6 +16,7 @@ class ChomeSpeacher():
     def __init__(self, appName, listenWord):
         self.appName = appName
         self.listenWord = listenWord
+        self.listenWordEnd = "run"
         self.askType = "listen"
 
     def say(self, output):
@@ -26,18 +27,18 @@ class ChomeSpeacher():
         pyttsx3.speak(output)
 
     def runCommand(self, newCommand):
-        newCommand = newCommand.split(" ")
-        if (newCommand[0].lower() != self.listenWord):
-            return print("Wrong listener word.")
-        if (len(newCommand) < 2):
-            return self.output("Parameters are wrong.")
+        # newCommand = newCommand.split(" ")
+        # if (newCommand[0].lower() != self.listenWord):
+        #     return print("Wrong listener word.")
+        # if (len(newCommand) < 2):
+        #     return self.output("Parameters are wrong.")
 
-        newCommand = {
-            "paramCount": len(newCommand) - 1,
-            "command": newCommand[1].lower(),
-            "value": " ".join(newCommand[2:]),
-            "valueList": newCommand[2:]
-        }
+        # newCommand = {
+        #     "paramCount": len(newCommand) - 1,
+        #     "command": newCommand[1].lower(),
+        #     "value": " ".join(newCommand[2:]),
+        #     "valueList": newCommand[2:]
+        # }
 
         self.commandHandler(newCommand)
 
@@ -68,11 +69,64 @@ class ChomeSpeacher():
         answer = None
         self.commandAsk()
 
+    def containsText(self, text, param, afterCount = -1):
+        searchingText = f"{self.listenWord} {param}"
+
+        if text.rfind(searchingText) != -1:
+            result = {
+                "position": text.rfind(f"{self.listenWord} {param}")
+            }
+            givenValues = text[text.rfind(searchingText)+len(searchingText)+1:].split(" ")
+
+            if afterCount == -1 or len(givenValues) < afterCount:
+                result["values"] = " ".join( givenValues )
+            else:
+                result["values"] = " ".join( givenValues[:afterCount] )
+
+            return result
+        else:
+            return -1
+
+    def scanText(self, text):
+        result = []
+        lv_text = text
+        while lv_text.find(self.listenWord) != -1:
+            newValue = lv_text[ lv_text.find(self.listenWord): ]
+
+            if newValue.rfind(self.listenWord) != 0:
+                newValue = newValue[: newValue[ len(self.listenWord): ].find(self.listenWord) + len(self.listenWord)]
+
+            newValue = newValue.split(" ")
+            while (newValue[-1] == "" or newValue[-1] == " "):
+                newValue = newValue[:-1]
+            newValue = " ".join(newValue)
+
+            if (newValue.split(" ")[-1] == "run"):
+                result.append({
+                    "full": newValue,
+                    "param": newValue.split(" ")[1],
+                    "values": " ".join(newValue.split(" ")[2:-1]),
+                    "valuesList": newValue.split(" ")[2:-1],
+                })
+
+            lv_text = lv_text[len(newValue):]
+
+        return result
+
     def commandHandler(self, command):
-        if command["paramCount"] == 1:
-            if command["command"] == "exit":
+        founds = self.scanText(command.lower())
+        for found in founds:
+
+            if (found["param"] == "open"):
+                currentCommand = "start %s" % found["values"]
+                if os.system(currentCommand) == 0:
+                    self.output(f"starting {found['valuesList'][0]}")
+                else:
+                    self.output(f"Can\'t open \"%s\"." % (found["values"]))
+
+            elif found["param"] == "exit":
                 sys.exit(1)
-            elif command["command"] == "help":
+            elif found["param"] == "help":
                 self.output("writing help")
                 return print(f'\nYou can start commands in this app with saying \"{self.listenWord}\" at beginning and say the command after that.\
                     \nIf you want to write something because you want to enter a link exactly, you can say: \"{self.listenWord} type enter\".\
@@ -80,22 +134,13 @@ class ChomeSpeacher():
                     \nRead the introduction for more informations.\n\
                 ')
 
-        if command["paramCount"] >= 2:
-            if command["command"] == "type":
-                if command["value"] == "listen":
+            elif found["param"] == "type":
+                if found["value"] == "listen":
                     self.askType = "listen"
                     return self.output("changing to listen mode")
-                elif command["value"] == "enter":
+                elif found["value"] == "enter":
                     self.askType = "write"
                     return self.output("changing to write mode")
 
-            if command["command"] == "open":
-                currentCommand = "start %s" % command["value"]
-
-                if os.system(currentCommand) == 0:
-                    return self.output(f"starting {command['valueList'][0]}")
-                else:
-                    return self.output(f"Can\'t open \"%s\"." % (command["value"]))
-
-
-        self.output("Command does not exist.")
+            else:
+                self.output("Command does not exist.")
