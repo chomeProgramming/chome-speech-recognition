@@ -93,7 +93,6 @@ try:
             data = q.get()
             answer = None
             if rec.AcceptWaveform(data):
-                print(json.loads(rec.Result())["text"])
                 resultAudio = json.loads(rec.Result())["text"]
                 if (resultAudio != ""):
                     answer = speacher.commandHandler(resultAudio)
@@ -103,7 +102,6 @@ try:
                     answer = speacher.commandHandler(resultAudio)
 
             if (answer == True):
-                print("founded")
                 rec = vosk.KaldiRecognizer(model, args.samplerate)
 
             if dump_fn is not None:

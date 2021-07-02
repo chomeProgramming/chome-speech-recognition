@@ -69,24 +69,6 @@ class ChomeSpeacher():
         answer = None
         self.commandAsk()
 
-    def containsText(self, text, param, afterCount = -1):
-        searchingText = f"{self.listenWord} {param}"
-
-        if text.rfind(searchingText) != -1:
-            result = {
-                "position": text.rfind(f"{self.listenWord} {param}")
-            }
-            givenValues = text[text.rfind(searchingText)+len(searchingText)+1:].split(" ")
-
-            if afterCount == -1 or len(givenValues) < afterCount:
-                result["values"] = " ".join( givenValues )
-            else:
-                result["values"] = " ".join( givenValues[:afterCount] )
-
-            return result
-        else:
-            return -1
-
     def scanText(self, text):
         result = []
         lv_text = text
@@ -113,9 +95,29 @@ class ChomeSpeacher():
 
         return result
 
+    def detectMarks(self, text):
+        self.replaceMarks = [ ["dot","."] ]
+
+        text = text.split(" ")
+        for mark in self.replaceMarks:
+            while mark[0] in text:
+                position = text.index(mark[0])
+                if position == 0:
+                    text[position + 1] = mark[1] + text[position + 1]
+                elif position == len(text)-1:
+                    text[position - 1] += mark[1]
+                else:
+                    text[position - 1] += mark[1] + text[position + 1]
+                    text.pop(position + 1)
+                text.pop(position)                
+
+        return " ".join(text)
+
     def commandHandler(self, command):
-        founds = self.scanText(command.lower())
-        # return print(founds)
+        if (self.askType == "listen"):
+            command = self.detectMarks(command.lower())
+        founds = self.scanText(command)
+
         for found in founds:
 
             if (found["param"] == "open"):
