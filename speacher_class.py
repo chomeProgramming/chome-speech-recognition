@@ -115,6 +115,7 @@ class ChomeSpeacher():
 
     def commandHandler(self, command):
         founds = self.scanText(command.lower())
+        # return print(founds)
         for found in founds:
 
             if (found["param"] == "open"):
@@ -125,10 +126,11 @@ class ChomeSpeacher():
                     self.output(f"Can\'t open \"%s\"." % (found["values"]))
 
             elif found["param"] == "exit":
+                self.output("exiting")
                 sys.exit(1)
             elif found["param"] == "help":
                 self.output("writing help")
-                return print(f'\nYou can start commands in this app with saying \"{self.listenWord}\" at beginning and say the command after that.\
+                print(f'\nYou can start commands in this app with saying \"{self.listenWord}\" at beginning and say the command after that.\
                     \nIf you want to write something because you want to enter a link exactly, you can say: \"{self.listenWord} type enter\".\
                     \nIf you then want to be able to speak again, you say: \"{self.listenWord} type listen\".\
                     \nRead the introduction for more informations.\n\
@@ -137,10 +139,15 @@ class ChomeSpeacher():
             elif found["param"] == "type":
                 if found["value"] == "listen":
                     self.askType = "listen"
-                    return self.output("changing to listen mode")
+                    self.output("changing to listen mode")
                 elif found["value"] == "enter":
                     self.askType = "write"
-                    return self.output("changing to write mode")
+                    self.output("changing to write mode")
 
             else:
                 self.output("Command does not exist.")
+
+        if (len(founds) > 0):
+            return True
+        else:
+            return False

@@ -7,6 +7,7 @@ import sounddevice as sd
 import vosk
 import sys
 
+import json
 from speacher_class import ChomeSpeacher
 
 appName = "CHOME SPEACHER"
@@ -80,26 +81,33 @@ try:
         dump_fn = None
 
     startSpeacher()
+    # while True:
     with sd.RawInputStream(samplerate=args.samplerate, blocksize = 8000, device=args.device, dtype='int16',
-                            channels=1, callback=callback):
-            print('#' * 80)
-            print('Press Ctrl+C to stop the recording')
-            print('#' * 80)
+                        channels=1, callback=callback):
+        print('#' * 80)
+        print('Press Ctrl+C to stop the recording')
+        print('#' * 80)
 
-            rec = vosk.KaldiRecognizer(model, args.samplerate)
-            while True:
-                data = q.get()
-                if rec.AcceptWaveform(data):
-                    print(tuple(rec.Result()))
-                    # speacher.commandHandler(rec.Result()["text"])
-                else:
-                    # print(rec.PartialResult())
-                    print(tuple(rec.PartialResult()))
-                    # speacher.commandHandler(rec.PartialResult()["partial"])
+        rec = vosk.KaldiRecognizer(model, args.samplerate)
+        while True:
+            data = q.get()
+            answer = None
+            if rec.AcceptWaveform(data):
+                print(json.loads(rec.Result())["text"])
+                resultAudio = json.loads(rec.Result())["text"]
+                if (resultAudio != ""):
+                    answer = speacher.commandHandler(resultAudio)
+            else:
+                resultAudio = json.loads(rec.PartialResult())["partial"]
+                if (resultAudio != ""):
+                    answer = speacher.commandHandler(resultAudio)
 
+            if (answer == True):
+                print("founded")
+                rec = vosk.KaldiRecognizer(model, args.samplerate)
 
-                if dump_fn is not None:
-                    dump_fn.write(data)
+            if dump_fn is not None:
+                dump_fn.write(data)
 
 except KeyboardInterrupt:
     print('\nDone')
