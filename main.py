@@ -27,3 +27,5 @@ startSpeacher()
 # next step:
     # vosk speech_recognition:
     # https://www.youtube.com/watch?v=Itic1lFc4Gg
+
+# vosk: https://www.youtube.com/watch?v=xAdqA1prU5s
