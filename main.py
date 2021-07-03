@@ -14,15 +14,15 @@ from speacher_class import ChomeSpeacher
 appName = "CHOME SPEACHER"
 listenWord = "alexa"
 
-speacher = ChomeSpeacher(appName, listenWord)
 def startSpeacher():
     os.system("cls")
-    speacher.say("Welcome to %s!\n" % appName)
+    ChomeSpeacher.say(None, "Welcome to %s!\n" % appName)
     # speacher.askType = "write"
     # speacher.commandInput()
-    speacher.commandListener()
+    # speacher.commandListener()
 
-startSpeacher()
+speacher = ChomeSpeacher(appName, listenWord, "vosk", startSpeacher)
+speacher.commandAsk()
 
 # next step:
     # vosk speech_recognition:

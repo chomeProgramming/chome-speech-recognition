@@ -3,6 +3,12 @@ import re
 import speech_recognition
 import os
 import pyttsx3
+import argparse
+import queue
+import sounddevice as sd
+import vosk
+
+import json
 
 recognizer = speech_recognition.Recognizer()
 
@@ -13,11 +19,15 @@ engine.setProperty('voice', voices[1].id)
 engine.runAndWait()
 
 class ChomeSpeacher():
-    def __init__(self, appName, listenWord):
+    def __init__(self, appName, listenWord, listenerType, startFunction = None):
         self.appName = appName
         self.listenWord = listenWord
         self.listenWordEnd = "run"
         self.askType = "listen"
+        self.listenerType = listenerType
+        self.setupData = {}
+        self.start = startFunction
+        self.setup()
 
     def say(self, output):
         print(output)
@@ -26,31 +36,84 @@ class ChomeSpeacher():
         print("output: " + output)
         pyttsx3.speak(output)
 
-    def runCommand(self, newCommand):
-        # newCommand = newCommand.split(" ")
-        # if (newCommand[0].lower() != self.listenWord):
-        #     return print("Wrong listener word.")
-        # if (len(newCommand) < 2):
-        #     return self.output("Parameters are wrong.")
+    def callback(self, indata, frames, time, status):
+        """This is called (from a separate thread) for each audio block."""
+        if status:
+            print(status, file=sys.stderr)
+        self.setupData["q"].put(bytes(indata))
 
-        # newCommand = {
-        #     "paramCount": len(newCommand) - 1,
-        #     "command": newCommand[1].lower(),
-        #     "value": " ".join(newCommand[2:]),
-        #     "valueList": newCommand[2:]
-        # }
+    def start(self):
+        return
+    def setup(self):
+        self.setupData["q"] = queue.Queue()
 
-        self.commandHandler(newCommand)
+        def int_or_str(text):
+            """Helper function for argument parsing."""
+            try:
+                return int(text)
+            except ValueError:
+                return text
+
+        self.setupData["parser"] = argparse.ArgumentParser(add_help=False)
+        self.setupData["parser"].add_argument(
+            '-l', '--list-devices', action='store_true',
+            help='show list of audio devices and exit')
+        self.setupData["args"], remaining = self.setupData["parser"].parse_known_args()
+        if self.setupData["args"].list_devices:
+            print(sd.query_devices())
+            self.setupData["parser"].exit(0)
+        self.setupData["parser"] = argparse.ArgumentParser(
+            description=__doc__,
+            formatter_class=argparse.RawDescriptionHelpFormatter,
+            parents=[self.setupData["parser"]])
+        self.setupData["parser"].add_argument(
+            '-f', '--filename', type=str, metavar='FILENAME',
+            help='audio file to store recording to')
+        self.setupData["parser"].add_argument(
+            '-m', '--model', type=str, metavar='MODEL_PATH',
+            help='Path to the model')
+        self.setupData["parser"].add_argument(
+            '-d', '--device', type=int_or_str,
+            help='input device (numeric ID or substring)')
+        self.setupData["parser"].add_argument(
+            '-r', '--samplerate', type=int, help='sampling rate')
+        self.setupData["args"] = self.setupData["parser"].parse_args(remaining)
+
+        if self.setupData["args"].model is None:
+            self.setupData["args"].model = "model"
+            if not os.path.exists(self.setupData["args"].model):
+                print ("Please download a model for your language from https://alphacephei.com/vosk/models")
+                print ("and unpack as 'model' in the current folder.")
+                self.setupData["parser"].exit(0)
+            if self.setupData["args"].samplerate is None:
+                device_info = sd.query_devices(self.setupData["args"].device, 'input')
+                # soundfile expects an int, sounddevice provides a float:
+                self.setupData["args"].samplerate = int(device_info['default_samplerate'])
+
+            self.setupData["model"] = vosk.Model(self.setupData["args"].model)
+
+            if self.setupData["args"].filename:
+                self.setupData["dump_fn"] = open(self.setupData["args"].filename, "wb")
+            else:
+                self.setupData["dump_fn"] = None
+
+        if (self.start):
+            self.start()
 
     def commandAsk(self):
         if self.askType == "write":
             self.commandInput()
+            return "write"
         elif self.askType == "listen":
-            self.commandListener()
+            if self.listenerType == "vosk":
+                self.voskListener()
+            else:
+                self.commandListener()
+            return "listen"
 
     def commandInput(self):
         newCommand = input()
-        self.runCommand(newCommand)
+        self.commandHandler(newCommand)
         self.commandAsk()
 
     def commandListener(self):
@@ -65,9 +128,43 @@ class ChomeSpeacher():
             except speech_recognition.UnknownValueError:
                 print("UnknownValueError")
         print(answer)
-        self.runCommand(answer)
+        self.commandHandler(answer)
         answer = None
         self.commandAsk()
+
+    def voskListener(self):
+        try:
+            with sd.RawInputStream(samplerate=self.setupData["args"].samplerate, blocksize = 8000, device=self.setupData["args"].device, dtype='int16',
+                            channels=1, callback=self.callback):
+                # print('#' * 80)
+                # print('Press Ctrl+C to stop the recording')
+                # print('#' * 80)
+                rec = vosk.KaldiRecognizer(self.setupData["model"], self.setupData["args"].samplerate)
+                while True:
+                    if self.askType != "listen":
+                        return print("stop")
+                    data = self.setupData["q"].get()
+                    answer = None
+                    if rec.AcceptWaveform(data):
+                        resultAudio = json.loads(rec.Result())["text"]
+                        if (resultAudio != ""):
+                            answer = self.commandHandler(resultAudio)
+                    else:
+                        resultAudio = json.loads(rec.PartialResult())["partial"]
+                        if (resultAudio != ""):
+                            answer = self.commandHandler(resultAudio)
+
+                    if (answer == True):
+                        rec = vosk.KaldiRecognizer(self.setupData["model"], self.setupData["args"].samplerate)
+
+                    if self.setupData["dump_fn"] is not None:
+                        self.setupData["dump_fn"].write(data)
+
+        except KeyboardInterrupt:
+            print('\nDone')
+            self.setupData["parser"].exit(0)
+        except Exception as e:
+            self.setupData["parser"].exit(type(e).__name__ + ': ' + str(e))
 
     def scanText(self, text):
         result = []
@@ -117,6 +214,8 @@ class ChomeSpeacher():
         if (self.askType == "listen"):
             command = self.detectMarks(command.lower())
         founds = self.scanText(command)
+        for found in founds:
+            print(found["full"])
 
         for found in founds:
 
@@ -139,12 +238,16 @@ class ChomeSpeacher():
                 ')
 
             elif found["param"] == "type":
-                if found["value"] == "listen":
-                    self.askType = "listen"
+                if found["valuesList"][0] == "listen":
                     self.output("changing to listen mode")
-                elif found["value"] == "enter":
-                    self.askType = "write"
+                    if self.askType != "listen":
+                        self.askType = "listen"
+                        self.commandAsk()
+                elif found["valuesList"][0] == "enter":
                     self.output("changing to write mode")
+                    if self.askType != "write":
+                        self.askType = "write"
+                        self.commandAsk()
 
             else:
                 self.output("Command does not exist.")

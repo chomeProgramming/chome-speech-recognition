@@ -81,7 +81,6 @@ try:
         dump_fn = None
 
     startSpeacher()
-    # while True:
     with sd.RawInputStream(samplerate=args.samplerate, blocksize = 8000, device=args.device, dtype='int16',
                         channels=1, callback=callback):
         print('#' * 80)
